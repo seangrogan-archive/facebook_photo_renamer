@@ -6,7 +6,13 @@ import win32file
 import piexif
 import pywintypes
 import win32con
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    def tqdm(iterable, *args, **kwargs):
+        for obj in iterable:
+            yield obj
 
 
 def changeFileCreationTime(fname, newtime):
@@ -25,8 +31,8 @@ def changeFileCreationTime(fname, newtime):
 
 def get_metadata_file(root, album_meta_folder, file):
     try:
-        with open(root + album_meta_folder + file) as jsonfile:
-            data = json.load(jsonfile)
+        with open(root + album_meta_folder + file) as json_file:
+            data = json.load(json_file)
     except FileNotFoundError or IOError:
         print(f"Could not read {file}")
     else:
@@ -68,15 +74,14 @@ def rename_file(idx, photo, root, time_fmt, other_info):
 
 def facebook_photo_renamer(root=None, *, time_fmt='%Y_%m_%d_%H%M%S'):
     album_meta_folder = "./photos_and_videos/album/"
-    meta_files = os.listdir(root + album_meta_folder)
+    meta_files = os.listdir(root + album_meta_folder)  # gets all JSON meta-data-files
     for meta_file in meta_files:
         print(f"Working on File : {meta_file}")
-        data = get_metadata_file(root, album_meta_folder, meta_file)
+        data = get_metadata_file(root, album_meta_folder, meta_file)  # reads meta-data-file
         print(f"Working on Album : {data.get('name')}")
         for idx, photo in tqdm(enumerate(data.get('photos', [])),
                                desc=f"processing Files {data.get('name')}",
                                total=len(data.get('photos', []))):
-
             try:
                 overwrite_exif(photo, root)
                 rename_file(idx, photo, root, time_fmt, data.get('name').replace(" ", "_"))
